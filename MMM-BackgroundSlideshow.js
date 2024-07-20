@@ -14,6 +14,8 @@
 Module.register('MMM-BackgroundSlideshow', {
   // Default module config.
   defaults: {
+    // Random.org Api Key
+    randomOrgApiKey: '',
     // an array of strings, each is a path to a directory with images
     imagePaths: ['modules/MMM-BackgroundSlideshow/exampleImages'],
     // do not recurse into these subdirectory names when scanning.
@@ -33,7 +35,7 @@ Module.register('MMM-BackgroundSlideshow', {
     // show a panel containing information about the image currently displayed.
     showImageInfo: false,
     // a comma separated list of values to display: name, date, geo (TODO)
-    imageInfo: 'name, date, imagecount',
+    imageInfo: 'name, date, imagecount, tags',
     // location of the info div
     imageInfoLocation: 'bottomRight', // Other possibilities are: bottomLeft, topLeft, topRight
     // transition speed from one image to the other, transitionImages must be true
@@ -501,6 +503,9 @@ Module.register('MMM-BackgroundSlideshow', {
               dateTime = '';
             }
           }
+
+          let tags = EXIF.getTag(image, 'Tags');
+
           // TODO: allow for location lookup via openMaps
           // let lat = EXIF.getTag(this, "GPSLatitude");
           // let lon = EXIF.getTag(this, "GPSLongitude");
@@ -508,7 +513,7 @@ Module.register('MMM-BackgroundSlideshow', {
           // if (lat && lon) {
           //   // Get small map of location
           // }
-          this.updateImageInfo(imageinfo, dateTime);
+          this.updateImageInfo(imageinfo, dateTime, tags);
         }
 
         if (!this.browserSupportsExifOrientationNatively) {
@@ -583,7 +588,7 @@ Module.register('MMM-BackgroundSlideshow', {
     }
   },
 
-  updateImageInfo (imageinfo, imageDate) {
+  updateImageInfo (imageinfo, imageDate, tags) {
     const imageProps = [];
     this.config.imageInfo.forEach((prop) => {
       switch (prop) {
@@ -620,6 +625,11 @@ Module.register('MMM-BackgroundSlideshow', {
         case 'imagecount':
           imageProps.push(`${imageinfo.index} of ${imageinfo.total}`);
           break;
+        case 'tags':
+            if(tags){
+              imageProps.push(tags);
+            }
+            break; 
         default:
           Log.warn(`${prop
           } is not a valid value for imageInfo.  Please check your configuration`);

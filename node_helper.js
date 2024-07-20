@@ -20,6 +20,7 @@ const {exec} = require('child_process');
 const express = require('express');
 const Log = require('../../js/logger.js');
 const basePath = '/images/';
+const axios = require('axios');
 
 // the main module helper create
 module.exports = NodeHelper.create({
@@ -37,6 +38,56 @@ module.exports = NodeHelper.create({
 
   // shuffles an array at random and returns it
   shuffleArray (array) {
+      try {
+            if (typeof config === 'undefined' || !Object.hasOwn(Object(config), 'randomOrgApiKey')) {
+              return shitShuffle(array);
+            }
+            
+            // https://api.random.org/json-rpc/4/basic
+            const key = this.config.randomOrgApiKey;
+            const apiUrl = 'https://api.random.org/json-rpc/4/invoke';
+            const requestBody = {
+                "jsonrpc": "2.0",
+                "method": "generateIntegers",
+                "params": {
+                    "apiKey": key,
+                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours
+                    "min": 0,
+                    "max": 1000, // Default set this later based on count
+                    "replacement": false // Only unique results avoid duplicate values 
+                },
+                "id": 42
+            };
+
+            requestBody.params.max = array.length-1;    
+
+            axios.post(apiUrl, requestBody)
+                .then(response => {
+                    //console.log('Response from API:', response.data);
+
+                    var randomIndicesSet = response.data.result.random.data;
+
+                    // Filter the array, keeping only the items whose index are in the random set
+                    array = array.filter((item, index) => randomIndicesSet.has(index));
+
+                })
+                .catch(error => {
+                    Log.error(error);
+                    //role back to the original way if there is any kind of error
+                    array = shitShuffle(array);
+                });
+
+        } catch (error) {
+            Log.error(error);
+            //role back to the original way if there is any kind of error
+            array = shitShuffle(array);
+        } 
+ 
+    return array;
+  },
+
+  shitShuffle (array) {
+    // This is the original shit shuffle that never works as it is pseudo random but ok for backup
     for (let i = array.length - 1; i > 0; i--) {
       // j is a random index in [0, i].
       const j = Math.floor(Math.random() * (i + 1));

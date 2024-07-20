@@ -36,6 +36,16 @@ module.exports = NodeHelper.create({
     self = this;
   },
 
+  shitShuffle (array) {
+    // This is the original shit shuffle that never works as it is pseudo random but ok for backup
+    for (let i = array.length - 1; i > 0; i--) {
+      // j is a random index in [0, i].
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  },
+  
   // shuffles an array at random and returns it
   shuffleArray (array) {
       try {
@@ -86,16 +96,6 @@ module.exports = NodeHelper.create({
             array = shitShuffle(array);
         } 
  
-    return array;
-  },
-
-  shitShuffle (array) {
-    // This is the original shit shuffle that never works as it is pseudo random but ok for backup
-    for (let i = array.length - 1; i > 0; i--) {
-      // j is a random index in [0, i].
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
     return array;
   },
 

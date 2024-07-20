@@ -51,7 +51,7 @@ module.exports = NodeHelper.create({
                 "method": "generateIntegers",
                 "params": {
                     "apiKey": key,
-                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours
+                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours... TODO make this configrable 
                     "min": 0,
                     "max": 1000, // Default set this later based on count
                     "replacement": false // Only unique results avoid duplicate values 
@@ -65,11 +65,14 @@ module.exports = NodeHelper.create({
                 .then(response => {
                     //console.log('Response from API:', response.data);
 
+                    // Grab the Random index set
                     var randomIndicesSet = response.data.result.random.data;
 
                     // Filter the array, keeping only the items whose index are in the random set
                     array = array.filter((item, index) => randomIndicesSet.has(index));
 
+                    // Now use the old shit Shuffle. Random.Org has taken car of the real Random selection
+                    array = shitShuffle(array);
                 })
                 .catch(error => {
                     Log.error(error);

@@ -87,7 +87,9 @@ module.exports = NodeHelper.create({
             const randomIndicesSet = await axios.post(apiUrl, requestBody)
                   .then(response => {
                       //console.log('Response from API:', response.data);
-                      Log.info(`BACKGROUNDSLIDESHOW: Randon.Org response=${ JSON.stringify(response.data)}`);
+                      // Really this only happens once per day in the morning when the Digital Photo Frame comes on 
+                      // So I don't care about lokking out the full response 
+                      Log.debug(`BACKGROUNDSLIDESHOW: Randon.Org response=${ JSON.stringify(response.data)}`);
                       
                       const randomSet = response.data.result.random.data;
 

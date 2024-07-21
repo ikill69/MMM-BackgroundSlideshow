@@ -36,8 +36,8 @@ module.exports = NodeHelper.create({
     self = this;
   },
 
+  // This is the original shit shuffle that never works as it is pseudo random but ok for backup
   shitShuffle (array) {
-    // This is the original shit shuffle that never works as it is pseudo random but ok for backup
     for (let i = array.length - 1; i > 0; i--) {
       // j is a random index in [0, i].
       const j = Math.floor(Math.random() * (i + 1));
@@ -47,21 +47,33 @@ module.exports = NodeHelper.create({
   },
   
   // shuffles an array at random and returns it
-  shuffleArray (array) {
+  // making this async is not ideal as it does mean that it starts trying to show all 50K photos 
+  // but then quickly switches over to just the random 1000 per day 1 per minute that I have setup
+  // TODO: Clean this up later 
+  async shuffleArray (array, randomOrgApiKey) {
+
+      Log.info(`BACKGROUNDSLIDESHOW: Total Image Count ${array.length}`);
+
+      // Start by performing a shit shuffle in case of any error this will be better than nothing as a default shuffle
+      arrary = this.shitShuffle(array);
+
       try {
-            if (typeof config === 'undefined' || !Object.hasOwn(Object(config), 'randomOrgApiKey')) {
-              return shitShuffle(array);
-            }
             
+            if(!randomOrgApiKey){
+              Log.error(`BACKGROUNDSLIDESHOW: randomOrgApiKey missing or not set in config`);
+              return array;
+            }
+
+            // Setup For calling Randon.Org
             // https://api.random.org/json-rpc/4/basic
-            const key = this.config.randomOrgApiKey;
+            const key = randomOrgApiKey;
             const apiUrl = 'https://api.random.org/json-rpc/4/invoke';
             const requestBody = {
                 "jsonrpc": "2.0",
                 "method": "generateIntegers",
                 "params": {
                     "apiKey": key,
-                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours... TODO make this configrable 
+                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours perfect for my use case... TODO make this configrable 
                     "min": 0,
                     "max": 1000, // Default set this later based on count
                     "replacement": false // Only unique results avoid duplicate values 
@@ -71,31 +83,39 @@ module.exports = NodeHelper.create({
 
             requestBody.params.max = array.length-1;    
 
-            axios.post(apiUrl, requestBody)
-                .then(response => {
-                    //console.log('Response from API:', response.data);
+            // Setup for calling the service
+            const randomIndicesSet = await axios.post(apiUrl, requestBody)
+                  .then(response => {
+                      //console.log('Response from API:', response.data);
+                      Log.info(`BACKGROUNDSLIDESHOW: Randon.Org response=${ JSON.stringify(response.data)}`);
+                      
+                      const randomSet = response.data.result.random.data;
 
-                    // Grab the Random index set
-                    var randomIndicesSet = response.data.result.random.data;
+                      Log.info(`BACKGROUNDSLIDESHOW: Randon.Org randomIndicesSet.length=${randomSet.length}`);
 
-                    // Filter the array, keeping only the items whose index are in the random set
-                    array = array.filter((item, index) => randomIndicesSet.has(index));
+                      return randomSet;
+                  }).catch(error => {
+                    Log.info(`Filter array error=${error}`);
+                  });
 
-                    // Now use the old shit Shuffle. Random.Org has taken car of the real Random selection
-                    array = shitShuffle(array);
-                })
-                .catch(error => {
-                    Log.error(error);
-                    //role back to the original way if there is any kind of error
-                    array = shitShuffle(array);
-                });
+            // Filter the array, keeping only the items whose index are in the random set
+            let arrayFilter = array.filter((item, index) => randomIndicesSet.includes(index));
+                                                        
+            Log.info(`BACKGROUNDSLIDESHOW: Filtered length=${arrayFilter.length}`);
+
+            // Now use the old shit Shuffle again in the properly random filtered list. 
+            // Random.Org has taken care of the real Random selection of images for the day
+            arrayFilter = this.shitShuffle(arrayFilter);
+
+            // Over write the array with random subset 
+            array=arrayFilter;
 
         } catch (error) {
-            Log.error(error);
-            //role back to the original way if there is any kind of error
-            array = shitShuffle(array);
+            Log.info(`trycatch error=${error}`);
         } 
  
+    Log.info(`BACKGROUNDSLIDESHOW: Random Shuffle Image Count ${array.length}`);
+
     return array;
   },
 
@@ -161,12 +181,13 @@ module.exports = NodeHelper.create({
   },
 
   // gathers the image list
-  gatherImageList (config, sendNotification) {
+  async gatherImageList (config, sendNotification) {
     // Invalid config. retrieve it again
-    if (typeof config === 'undefined' || !Object.hasOwn(Object(config), 'imagePaths')) {
+    if (typeof config === 'undefined' || !Object.hasOwn(Object(config), 'imagePaths') || !Object.hasOwn(Object(config), 'randomOrgApiKey')) {
       this.sendSocketNotification('BACKGROUNDSLIDESHOW_REGISTER_CONFIG');
       return;
     }
+
     // create an empty main image list
     this.imageList = [];
     for (let i = 0; i < config.imagePaths.length; i++) {
@@ -174,7 +195,7 @@ module.exports = NodeHelper.create({
     }
 
     this.imageList = config.randomizeImageOrder
-      ? this.shuffleArray(this.imageList)
+      ? await this.shuffleArray(this.imageList, config.randomOrgApiKey)
       : this.sortImageList(
         this.imageList,
         config.sortImagesBy,

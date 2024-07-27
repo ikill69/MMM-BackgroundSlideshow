@@ -73,7 +73,7 @@ module.exports = NodeHelper.create({
                 "method": "generateIntegers",
                 "params": {
                     "apiKey": key,
-                    "n": 1000, // 1000 pictures per day is about 1/minute for 17 hours perfect for my use case... TODO make this configrable 
+                    "n": 1333, // Default 1333 pictures per day. 1000 = 1/minute for 17 hours perfect for my use case and config...  
                     "min": 0,
                     "max": 1000, // Default set this later based on count
                     "replacement": false // Only unique results avoid duplicate values 
@@ -81,6 +81,13 @@ module.exports = NodeHelper.create({
                 "id": 42
             };
 
+            // This JavaScript function always returns a random number between min and max (both included):
+            const min = 1100;
+            const max = 1333;
+            const rand = Math.floor(Math.random() * (max - min + 1) ) + min;
+            
+            // Avoid any kind of patten or pseudo random make it fect a diferent number of random images each day
+            requestBody.params.n = rand;
             requestBody.params.max = array.length-1;    
 
             // Setup for calling the service
